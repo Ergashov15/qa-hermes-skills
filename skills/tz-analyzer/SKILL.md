@@ -1,6 +1,6 @@
 ---
 name: tz-analyzer
-description: Read and analyze project documentation (TZ, PRD, SRS, BRD, user stories in Word .docx/.doc, Markdown, or text) to detect requirement defects, ambiguities, contradictions, omissions, edge-case gaps, orthographic typos, and casing inconsistencies as early as possible (Shift-Left QA), generating audit reports in Markdown and Microsoft Word (.docx) format.
+description: Read and analyze project documentation in any format (Word .docx/.doc, text PDF, scanned/photographed book PDF, images, Markdown) to detect requirement defects across 34 categories, typos, and casing issues as early as possible (Shift-Left QA), generating audit reports in Markdown and Microsoft Word (.docx).
 ---
 
 # Technical Specification (TZ) & Requirements Analyzer
@@ -8,21 +8,118 @@ description: Read and analyze project documentation (TZ, PRD, SRS, BRD, user sto
 ## Core Mission: Shift-Left Early Defect Detection & Quality Audit
 The primary objective of this skill is **early defect detection (kamchiliklarni ertaroq aniqlash)** va **talabnomalar auditi (requirements quality audit)**. 
 
-In the software development lifecycle, fixing a requirement bug discovered in production or during late implementation is **10x to 100x more costly** than catching it at the specification stage. When a user provides or uploads a project document (ТЗ / Texnik Topshiriq, PRD, SRS, User Stories, or Architecture RFC in Microsoft Word `.docx` / `.doc`, Markdown, or text format), this skill guides the agent to read it deeply, scrutinize every assumption, uncover hidden risks, and audit the specification **before developers write a single line of code**.
+In the software development lifecycle, fixing a requirement bug discovered in production or during late implementation is **10x to 100x more costly** than catching it at the specification stage. When a user provides or uploads project documentation in ANY format (Word `.docx`/`.doc`, digital PDF, photographed/scanned book pages in PDF, images `.png`/`.jpg`, Markdown, or text), this skill guides the agent to read it deeply, scrutinize every assumption, uncover hidden risks, and audit the specification **before developers write a single line of code**.
 
 ---
 
-## Scope & Responsibility Boundaries (Aniq Chegaralar)
+## Laser-Focused Objective & Anti-Drift Guardrails (Qat'iy Diqqat va Cheklovlar)
 
-To maintain strict separation of concerns, `tz-analyzer` operates exclusively within two core capabilities:
+Hermes agent must maintain **100% laser focus** on the requirements audit mission and **STRICTLY AVOID** drifting into unrelated areas:
 
-1. **Shift-Left Early Defect Detection (Dasturlashdan oldin xatolarni topish):** Ingesting specifications, scanning against the 34-category defect taxonomy, discovering contradictions, omissions, boundary gaps, orthographic typos, and casing inconsistencies.
-2. **Quality Audit & Remediation (Audit, o'zini o'zi tekshirish va tuzatishlar tavsiyasi):** Assessing specification health score, formulating stakeholder clarification questions, proposing architectural solutions (state machines, RFC schemas), and exporting the official Word deliverable (`audit_report.docx`).
+### 1. The Single Uncompromising Goal
+Your sole responsibility is to audit the provided technical documentation against the **34-Category Defect Taxonomy**, verify **linguistic orthography and casing**, calculate the **Requirements Health Score**, formulate prioritized **stakeholder clarification questions**, and export the official **`audit_report.docx`** deliverable.
 
-> **Strict Boundary:**  
-> `tz-analyzer` **DOES NOT write test cases or automated tests**.
-> - Functional/Manual test cases belong strictly to **`doc-testcases`** and **`swagger-testcases`**.
-> - Automated test scripts and code generation belong strictly to **`service-object-model`**.
+### 2. Strict Anti-Drift Rules (Boshqa tomonga og'ish taqiqlanadi)
+- ❌ **STRICTLY FORBIDDEN — Writing Test Cases:**  
+  Do NOT write manual test cases, test plans, test steps, or test scenarios. If test cases are needed, that is strictly the responsibility of **`doc-testcases`** and **`swagger-testcases`**.
+- ❌ **STRICTLY FORBIDDEN — Writing Code or Auto Tests:**  
+  Do NOT write backend/frontend code, test automation scripts, pytest files, or mock servers. Test automation belongs strictly to **`service-object-model`**.
+- ❌ **STRICTLY FORBIDDEN — Proposing Implementation Architecture & Solutions:**  
+  Do NOT invent architectural implementations or dictate coding solutions to developers. Your job as an auditor is to detect ambiguities, contradictions, and missing rules, and ask sharp clarification questions to Product Managers and Business Analysts — the architecture and implementation design belongs to the software architects and engineering team.
+- ❌ **STRICTLY FORBIDDEN — Generic Document Summarization:**  
+  Do NOT simply rephrase or summarize the document without auditing it. A summary is NOT a QA audit. Every finding must strictly map to one of the 34 defect categories with severity, location, finding description, and engineering impact.
+- ❌ **STRICTLY FORBIDDEN — Distraction by Scan or Image Artifacts:**  
+  When reading photographed book pages, scanned PDFs, or low-resolution images, do NOT get sidetracked complaining about image rotation, paper grain, or scanner noise unless it renders a requirement completely illegible. Extract the business rules, state machines, and constraints from the images, and audit the substance.
+
+---
+
+## Universal Multi-Format Ingestion Engine (Har xil formatdagi hujjatlarni o'qish)
+
+Technical documentation comes in diverse file formats. Hermes must seamlessly ingest any format using these built-in Python recipes:
+
+```text
+                  [User Document / Specification]
+                                 │
+         ┌───────────────────────┼───────────────────────┐
+         ▼                       ▼                       ▼
+   Word (.docx/.doc)      Digital Text PDF        Scanned / Photo PDF
+   (python-docx)          (pymupdf / pypdf)       (Book photo scan)
+         │                       │                       │
+         │                       │               Extract page pixmaps
+         │                       │               & inspect via view_file
+         └───────────────────────┼───────────────────────┘
+                                 │
+                                 ▼
+                 [Complete Extracted Specification]
+                                 │
+                                 ▼
+                     [Systematic 34-Taxonomy Scan]
+```
+
+### 1. Microsoft Word Documents (`.docx`, `.doc`)
+Extract structured paragraphs, headings, and data tables:
+```python
+from docx import Document
+
+def extract_docx(file_path: str) -> str:
+    doc = Document(file_path)
+    lines = [f"# Extracted Content: {file_path}\n"]
+    for p in doc.paragraphs:
+        if p.text.strip():
+            level = p.style.name.replace("Heading", "").strip() if p.style.name.startswith("Heading") else ""
+            prefix = ("#" * int(level) + " ") if level.isdigit() else ""
+            lines.append(f"{prefix}{p.text.strip()}\n")
+    for idx, table in enumerate(doc.tables, 1):
+        lines.append(f"\n### Table {idx}:\n")
+        for row in table.rows:
+            lines.append("| " + " | ".join(c.text.strip().replace("\n", " ") for c in row.cells) + " |")
+    return "\n".join(lines)
+```
+
+### 2. Digital Text-Based PDF Documents (`.pdf`)
+Extract text, headings, and tables from native PDFs:
+```python
+import pymupdf  # PyMuPDF
+
+def extract_pdf_text(file_path: str) -> str:
+    doc = pymupdf.open(file_path)
+    extracted = [f"# PDF Document: {file_path} (Pages: {len(doc)})\n"]
+    for page_num, page in enumerate(doc, 1):
+        text = page.get_text("text").strip()
+        extracted.append(f"--- Page {page_num} ---\n{text}\n")
+    return "\n".join(extracted)
+```
+
+### 3. Scanned / Photographed Book PDFs ("Kitobdan rasmga olinib PDF qilingan")
+Often a specification or standard is photographed from a physical book or paper document and compiled into a PDF without selectable text. Hermes handles this systematically:
+
+1. **Detection:** If `page.get_text().strip()` is empty or yields only broken whitespace across pages, the PDF is an image-based scan.
+2. **Page Image Extraction Recipe:**
+```python
+import os
+import pymupdf
+
+def extract_scanned_pdf_pages(pdf_path: str, output_dir: str = "extracted_pages") -> list:
+    """Extracts high-resolution images from scanned/photo PDF pages."""
+    os.makedirs(output_dir, exist_ok=True)
+    doc = pymupdf.open(pdf_path)
+    image_paths = []
+    for page_idx, page in enumerate(doc):
+        # Render page at 200 DPI for crisp readability
+        pix = page.get_pixmap(dpi=200)
+        img_path = os.path.join(output_dir, f"page_{page_idx + 1:03d}.png")
+        pix.save(img_path)
+        image_paths.append(img_path)
+    return image_paths
+```
+3. **Visual Inspection:** Hermes calls `view_file` on each extracted `page_XXX.png` (since `view_file` natively supports image inspection) to read the book text, diagrams, formulas, and printed tables, reconstructing the full technical specification.
+
+### 4. Standalone Image Files (`.png`, `.jpg`, `.jpeg`, `.webp`)
+When the user uploads phone photos of paper requirements, whiteboard architectures, or document screenshots:
+- Inspect the images directly using `view_file` to transcribe and analyze the requirements statements.
+
+### 5. Plaintext, Markdown & HTML (`.md`, `.txt`, `.html`)
+- Ingest directly using `view_file`.
 
 ---
 
@@ -153,40 +250,13 @@ In software engineering, casing is functional syntax. Inconsistent casing causes
 
 ---
 
-## Microsoft Word (.docx / .doc) Processing & Deliverable Generation
+## Microsoft Word (.docx) Official Audit Report Generator
 
-In enterprise workflows, project specifications and official QA audit deliverables are frequently managed in **Microsoft Word (`.docx`, `.doc`)** format. This skill natively supports both reading input Word specifications and generating production-ready Word audit reports directly via Python `python-docx`.
-
-### 1. Ingesting Microsoft Word Specifications (Input Processing)
-When the user uploads or points to a `.docx` or `.doc` technical document, extract structured headings, paragraphs, and tables without formatting loss using this self-contained Python snippet:
-
-```python
-from docx import Document
-
-def extract_docx_content(file_path: str) -> str:
-    """Extracts headings, paragraphs, and tables from a Word (.docx) document."""
-    doc = Document(file_path)
-    content = [f"# Extracted Content from: {file_path}\n"]
-    for p in doc.paragraphs:
-        text = p.text.strip()
-        if not text:
-            continue
-        level = p.style.name.replace("Heading", "").strip() if p.style.name.startswith("Heading") else ""
-        prefix = ("#" * int(level) + " ") if level.isdigit() else ""
-        content.append(f"{prefix}{text}\n")
-    for idx, table in enumerate(doc.tables, 1):
-        content.append(f"\n### Table {idx}:\n")
-        for row in table.rows:
-            content.append("| " + " | ".join(c.text.strip().replace("\n", " ") for c in row.cells) + " |")
-    return "\n".join(content)
-```
-
-### 2. Generating the Official Word Audit Report (Word Deliverable: `audit_report.docx`)
-Stakeholders (Product Owners, Business Analysts, Project Managers, and External Clients) need an editable, formal report that they can open in Microsoft Word or Google Docs to review, highlight, leave tracked comments, and sign off.
+Stakeholders (Product Owners, Business Analysts, Project Managers, and External Clients) require an editable, formal deliverable that they can open in Microsoft Word or Google Docs to review, highlight, leave tracked comments, and sign off.
 
 Therefore, for every audit, **generate a styled Microsoft Word document (`audit_report.docx`)** in addition to the markdown response.
 
-#### Word Document Generation Recipe (Python):
+### Word Document Generation Recipe (Python):
 Execute this self-contained Python logic to produce the styled Word audit report:
 
 ```python
@@ -312,23 +382,6 @@ def generate_audit_docx(data: dict, output_path: str = "audit_report.docx"):
         r2 = p.add_run(q)
         r2.font.name, r2.font.size, r2.font.color.rgb = "Segoe UI", Pt(9.5), COLOR_TEXT
 
-    # Section 5: Recommended Solutions (Callouts)
-    h5 = doc.add_paragraph(); h5.paragraph_format.space_before = Pt(14)
-    r = h5.add_run("5. Recommended Technical Solutions")
-    r.bold, r.font.name, r.font.size, r.font.color.rgb = True, "Segoe UI", Pt(13), COLOR_SLATE
-    for s_i, s in enumerate(data.get("recommended_solutions", []), 1):
-        tbl = doc.add_table(rows=1, cols=1)
-        tbl.alignment = WD_TABLE_ALIGNMENT.CENTER
-        c = tbl.cell(0, 0); c.width = Inches(6.5)
-        set_bg(c, "F0F4F8"); set_pad(c, top=120, bottom=120, left=180, right=160)
-        c._element.get_or_add_tcPr().append(parse_xml(f'<w:tcBorders {nsdecls("w")}><w:top w:val="none"/><w:left w:val="single" w:sz="36" w:space="0" w:color="1B365D"/><w:bottom w:val="none"/><w:right w:val="none"/></w:tcBorders>'))
-        p = c.paragraphs[0]
-        r1 = p.add_run(f"{s.get('title', f'Solution {s_i}')}: ")
-        r1.bold, r1.font.name, r1.font.size, r1.font.color.rgb = True, "Segoe UI", Pt(10), COLOR_NAVY
-        r2 = p.add_run(s.get('text', ''))
-        r2.font.name, r2.font.size, r2.font.color.rgb = "Segoe UI", Pt(9.5), COLOR_TEXT
-        doc.add_paragraph().paragraph_format.space_after = Pt(4)
-
     doc.save(output_path)
 ```
 
@@ -337,37 +390,36 @@ def generate_audit_docx(data: dict, output_path: str = "audit_report.docx"):
 ## Early Detection Execution Workflow
 
 ```text
-[User provides TZ / PRD / Word .docx / Document]
-                  │
-                  ▼
- 1. Full Ingestion & Scope Parsing
-    - Ingest .docx via python-docx or raw text/markdown
+[User provides TZ / PRD / Word .docx / Scanned Book PDF / Images]
+                              │
+                              ▼
+ 1. Universal Multi-Format Ingestion
+    - Word (.docx): Extract headings, text, tables via python-docx
+    - Digital PDF: Extract text via pymupdf
+    - Scanned / Photo PDF: Extract page images via pymupdf and inspect via view_file
+    - Images (.png, .jpg): Inspect directly via view_file
     - Read entire document without skimming
     - Map actors, modules, workflows, and external dependencies
-                  │
-                  ▼
+                              │
+                              ▼
  2. Systematic 34-Taxonomy Scan
     - Scrutinize every requirement statement against categories 1 to 34
     - Audit orthography, field spelling, and terminology consistency
     - Verify Upper/Lower casing across enums, keys, and acronyms
     - Flag contradictions across different sections
     - Identify missing edge cases and boundary gaps
-                  │
-                  ▼
+                              │
+                              ▼
  3. Severity & Impact Classification
     - Rate as Blocker, Critical, Major, or Minor
     - Detail exact developer and architectural consequences if not fixed
-                  │
-                  ▼
+                              │
+                              ▼
  4. Generate Stakeholder Clarification Questions
     - Formulate concrete, copy-paste-ready questions for PM / BA / Architect
-                  │
-                  ▼
- 5. Propose Industry Standard Technical Solutions
-    - Suggest concrete enums, state machine flows, schemas, or error formats
-                  │
-                  ▼
- 6. Dual Deliverable Generation
+                              │
+                              ▼
+ 5. Dual Deliverable Generation
     - Deliverable A: Professional Markdown Audit Report in Chat
     - Deliverable B: Formatted Microsoft Word Document (audit_report.docx)
 ```
@@ -433,20 +485,6 @@ Clear, numbered questions to eliminate all ambiguities before development:
 
 ---
 
-### Recommended Technical Solutions
-Concrete recommendations for detected gaps (proposed schemas, state machines, error formats):
-- **For GAP-001:** Enforce state machine transition: `DRAFT -> SUBMITTED (immutable) -> PROCESSING -> COMPLETED`.
-- **For GAP-004:** Adopt standard RFC 7807 problem details: `{ "type": "payment_failed", "status": 402, "detail": "Insufficient funds" }`.
-- **For GAP-006:** Define canonical Enum schema:
-  ```python
-  class OrderStatus(str, Enum):
-      PENDING = "PENDING"
-      PAID = "PAID"
-      CANCELLED = "CANCELLED"
-  ```
-
----
-
 ### Microsoft Word Document Generation Instruction
 After presenting the markdown report, execute the Python Word generator recipe to produce `audit_report.docx` and provide the clickable local file link to the generated `.docx` file for the user.
 ```
@@ -454,6 +492,6 @@ After presenting the markdown report, execute the Python Word generator recipe t
 ---
 
 ## Downstream Value
-- **To Developers & Architects:** Supplies clarified boundaries, data types, and status codes to ensure system contracts and state machines are fully defined before coding begins.
 - **To Product Owners & Stakeholders:** Delivers clear, prioritized clarification questions to eliminate business logic ambiguities in backlog grooming.
+- **To Developers & Architects:** Supplies a clean, de-risked specification baseline without ambiguities, contradictions, or missing constraints.
 - **To Stakeholders & Management:** Delivers a ready-to-share, professional Microsoft Word document (`audit_report.docx`) with styled tables, tracked changes readiness, and clean visual hierarchy for corporate sign-off.

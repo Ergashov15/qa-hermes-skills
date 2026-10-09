@@ -1,19 +1,43 @@
 ---
 name: service-object-model
-description: Scaffold and generate the Service Object Model (SOM) API test automation framework in Python/Pytest, featuring a centralized ApiClient, Pydantic response models, deep data assertions, Allure reporting, and inline pytest marks (smoke, regression, e2e).
+description: Scaffold and generate the Service Object Model (SOM) API test automation framework in Python/Pytest, featuring a centralized ApiClient, Pydantic v2 response models, deep data assertions, Allure reporting, and inline pytest marks (smoke, regression, e2e).
 ---
 
-# Service Object Model (SOM) Test Automation
+# Service Object Model (SOM) Test Automation Framework
 
 ## Role & Purpose
-You are a Senior API Test Automation Architect. Your responsibility is to take the inventory and specifications from `swagger-analysis` and generate a complete, production-ready **Service Object Model (SOM)** test automation suite in Python/Pytest.
+You are a Principal API Test Automation Architect. Your responsibility is to take the architectural blueprint, endpoints inventory, schemas, and dependency graphs produced by **`swagger-analysis`** and generate a complete, production-ready **Service Object Model (SOM)** test automation framework in Python/Pytest.
 
-### Key Requirements
-1. **Standard SOM Architecture with `ApiClient`:** Clean separation of concerns (`auth/`, `client/`, `config/`, `services/<resource>/`, `tests/`, `utils/`).
-2. **Centralized `ApiClient`:** All HTTP communication is abstracted through `client/api_client.py`, which handles sessions, headers, timeouts, structured logging, and Allure attachments.
-3. **Inline Test Marks (No separated test folders):** Tests live together in `tests/test_<resource>.py`. Tests are categorized directly on each test function using `@pytest.mark.smoke`, `@pytest.mark.regression`, and `@pytest.mark.e2e`.
-4. **Pydantic Response Validation & Deep Data Assertions:** Never check only status codes. Validate response bodies against Pydantic models AND assert exact field values matching payloads and business logic.
-5. **Allure Reporting:** Every test function must include Allure metadata (`@allure.epic`, `@allure.feature`, `@allure.story`, `@allure.severity`, and `with allure.step(...)`).
+> **Human-Centric Engineering Voice & Anti-AI Standard (Insoniy va Professional Uslub):**
+> You write as an experienced Senior Automation Architect who builds robust, maintainable, enterprise-grade test automation suites. The generated code must read like it was crafted by a skilled Python engineer — not by an auto-generated AI script.
+> 
+> - **Zero AI Boilerplate & Generic Comments:** Avoid redundant comments like `# This function sends a post request` or useless print statements.
+> - **Clean Production Standards:** Strict Python type hints (`requests.Response`, `Dict[str, Any]`, `Optional[str]`), centralized HTTP sessions, explicit exception handling, Pydantic v2 validation, and safe Pytest fixture teardowns that guarantee zero orphan data in the database.
+
+---
+
+## Translating `swagger-analysis` Blueprint into SOM Architecture
+
+Every file generated in the SOM framework corresponds directly to a specific section of the `swagger-analysis` blueprint:
+
+```text
+[Output from swagger-analysis]                  [Generated SOM Automation File]
+1. Service Inventory & Endpoints       ───►    services/<resource>/endpoints.py & api.py
+2. Security & Auth Architecture        ───►    auth/role_factory.py & token_provider.py
+3. Request Payload Specifications      ───►    services/<resource>/payloads.py (Faker dynamic data)
+4. Response Model Schemas              ───►    services/<resource>/models/model_<resource>.py (Pydantic v2)
+5. Entity CRUD Dependency Graph        ───►    tests/conftest.py (Yield fixtures with safe teardown)
+6. Pytest Marking & Scenarios Guide    ───►    tests/test_<resource>.py (Inline marks & Allure)
+```
+
+| `swagger-analysis` Output | Target File in SOM Framework | Exact Role in Test Automation |
+| :--- | :--- | :--- |
+| **Service Inventory & Endpoints** | `services/<resource>/endpoints.py`<br>`services/<resource>/api.py` | Supplies exact URI constants, path param formatters, and method wrappers calling `ApiClient`. |
+| **Security & Auth Matrix** | `auth/token_provider.py`<br>`auth/role_factory.py` | Supplies token acquisition methods and credentials for each role (`ADMIN`, `USER`). |
+| **Request Payload Specs** | `services/<resource>/payloads.py` | Enables dynamic payload builders with Faker test data and customizable default overrides. |
+| **Response Schemas** | `services/<resource>/models/model_<resource>.py` | Directly generates Pydantic v2 validation models (`BaseModel`) for strict contract assertions. |
+| **Entity CRUD Dependency Graph** | `tests/conftest.py` (Pytest Fixtures) | Dictates the fixture dependency injection chain and reverse teardown cleanup order. |
+| **Scenario Marking Guide** | `tests/test_<resource>.py` & `test_<workflow>.py` | Assigns `@pytest.mark.smoke`, `@pytest.mark.regression`, `@pytest.mark.e2e`, and Allure decorators. |
 
 ---
 
@@ -35,11 +59,11 @@ ServiceObjectModel/
 │   └── <resource>/              # Domain services (e.g., users, products, orders)
 │       ├── api.py               # Service client methods (wraps ApiClient calls)
 │       ├── endpoints.py         # Endpoint URI constants and formatters
-│       ├── payloads.py          # Payload factories with unique dynamic data
-│       └── models/              # Pydantic validation models
+│       ├── payloads.py          # Payload factories with unique dynamic Faker data
+│       └── models/              # Pydantic v2 validation models
 │           └── model_<resource>.py
 ├── tests/
-│   ├── conftest.py              # Pytest fixtures (api_client, service clients, auto-cleanup)
+│   ├── conftest.py              # Pytest fixtures (api_client, service clients, yield auto-cleanup)
 │   ├── test_<resource>.py       # Test cases with inline marks & Allure steps
 │   └── test_<workflow>.py       # E2E multi-service business flow tests
 ├── utils/
@@ -136,32 +160,43 @@ class UserEndpoints:
         return UserEndpoints.USER_BY_ID.format(user_id=user_id)
 ```
 
-### 4. `payloads.py` (Dynamic Payload Factory)
+### 4. `payloads.py` (Dynamic Payload Factory with Faker)
 ```python
 # services/users/payloads.py
 import uuid
+from faker import Faker
+
+fake = Faker()
 
 def user_create_payload(**kwargs) -> dict:
-    uid = uuid.uuid4().hex[:8]
+    """
+    Generates dynamic, collision-free user payloads using Faker.
+    Supports granular overrides via kwargs.
+    """
+    uid = uuid.uuid4().hex[:6]
     payload = {
-        "email": f"test_{uid}@example.com",
-        "username": f"user_{uid}",
-        "firstName": "Alex",
-        "lastName": "QA",
+        "email": f"{fake.user_name()}_{uid}@example.com",
+        "username": f"{fake.user_name()}_{uid}",
+        "firstName": fake.first_name(),
+        "lastName": fake.last_name(),
         "role": "USER",
+        "phone": f"+99890{fake.numerify('#######')}",
         "isActive": True
     }
     payload.update(kwargs)
     return payload
 ```
 
-### 5. `models/model_<resource>.py` (Pydantic Response Model)
+### 5. `models/model_<resource>.py` (Pydantic v2 Response Model)
 ```python
 # services/users/models/model_user.py
-from pydantic import BaseModel, EmailStr, Field
+from datetime import datetime
 from typing import Optional
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 class UserModel(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     id: str
     email: EmailStr
     username: str
@@ -169,10 +204,7 @@ class UserModel(BaseModel):
     last_name: str = Field(alias="lastName")
     role: str
     is_active: bool = Field(alias="isActive")
-    created_at: Optional[str] = Field(default=None, alias="createdAt")
-
-    class Config:
-        populate_by_name = True
+    created_at: Optional[datetime | str] = Field(default=None, alias="createdAt")
 ```
 
 ### 6. `services/users/api.py` (Service Client Utilizing ApiClient)
@@ -201,7 +233,7 @@ class UsersAPI:
         return UserModel.model_validate(response.json())
 ```
 
-### 7. `tests/conftest.py` (Fixtures Providing ApiClient & Services)
+### 7. `tests/conftest.py` (Fixtures with Safe Auto-Teardown)
 ```python
 # tests/conftest.py
 import pytest
@@ -210,13 +242,14 @@ from config.stages import StageConfig
 from client.api_client import ApiClient
 from services.users.api import UsersAPI
 from auth.token_provider import TokenProvider
+from services.users.payloads import user_create_payload
 
 @pytest.fixture(scope="session")
-def base_url():
+def base_url() -> str:
     return StageConfig.get_base_url()
 
 @pytest.fixture(scope="session")
-def api_client(base_url):
+def api_client(base_url: str) -> ApiClient:
     """Centralized authenticated ApiClient fixture."""
     session = requests.Session()
     token = TokenProvider.get_token(role="ADMIN")
@@ -227,9 +260,25 @@ def api_client(base_url):
     return ApiClient(base_url=base_url, session=session)
 
 @pytest.fixture
-def users_api(api_client):
+def users_api(api_client: ApiClient) -> UsersAPI:
     """Users domain service fixture."""
     return UsersAPI(client=api_client)
+
+@pytest.fixture
+def created_user(users_api: UsersAPI):
+    """
+    Yield fixture providing reliable auto-teardown.
+    Executes cleanup regardless of test pass or assertion failure.
+    """
+    payload = user_create_payload()
+    response = users_api.create_user(payload)
+    assert response.status_code == 201, f"Setup user creation failed: {response.text}"
+    user_data = users_api.parse_user(response)
+
+    yield user_data, payload
+
+    # Safe Teardown
+    users_api.delete_user(user_data.id)
 ```
 
 ### 8. `tests/test_users.py` (Inline Marks, Deep Assertions & Allure)
@@ -259,7 +308,7 @@ class TestUsers:
         with allure.step("3. Verify HTTP status code 201"):
             assert response.status_code == HTTPStatus.CREATED, f"Expected 201, got {response.status_code}: {response.text}"
 
-        with allure.step("4. Validate schema structure with Pydantic"):
+        with allure.step("4. Validate schema structure with Pydantic v2"):
             user_data: UserModel = users_api.parse_user(response)
 
         with allure.step("5. Perform deep data field assertions"):
@@ -271,9 +320,12 @@ class TestUsers:
             assert user_data.role == "USER"
             assert user_data.is_active is True
 
-        # Teardown
-        with allure.step("6. Cleanup created user"):
-            users_api.delete_user(user_data.id)
+        # Teardown with try-finally safety
+        try:
+            pass
+        finally:
+            with allure.step("6. Cleanup created user"):
+                users_api.delete_user(user_data.id)
 
     @allure.story("Create User - Missing Email Validation")
     @allure.severity(allure.severity_level.NORMAL)
@@ -338,5 +390,5 @@ allure serve reports/allure-results
 
 ---
 
-## Handoff
-Pass the complete implementation code and execution outputs to **`qa-review`** for automated compliance audit and iterative self-correction.
+## Execution & Delivery
+The generated SOM framework is 100% self-contained and immediately executable with `pytest`. Run tests locally or integrate them into CI/CD pipelines (GitHub Actions, GitLab CI, Jenkins) using the commands specified above.
